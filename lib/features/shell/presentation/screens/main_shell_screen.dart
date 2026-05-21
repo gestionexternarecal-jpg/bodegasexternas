@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/constants/app_layout.dart';
 import '../../../../core/providers/update_providers.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/providers/app_providers.dart';
@@ -45,7 +46,7 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
     final session = ref.watch(activeSessionProvider);
     final themeMode = ref.watch(appThemeModeProvider);
     final versionAsync = ref.watch(appVersionLabelProvider);
-    final isWide = MediaQuery.sizeOf(context).width > 1100;
+    final isWide = AppLayout.useExtendedRail(context);
     final path = GoRouterState.of(context).uri.path;
     final sessionLine = session != null
         ? '${session.session.login} · ${session.session.database}'
@@ -77,11 +78,11 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
               }
             },
             leading: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(vertical: 8),
               child: Column(
                 children: [
                   AppLogo(
-                    size: isWide ? 56 : 40,
+                    size: isWide ? 48 : 36,
                     borderRadius: 8,
                   ),
                   if (isWide) ...[

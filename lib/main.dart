@@ -4,6 +4,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app.dart';
+import 'core/constants/app_layout.dart';
 import 'core/firebase/firebase_bootstrap.dart';
 import 'core/utils/ecuador_datetime.dart';
 
@@ -51,8 +52,8 @@ Future<void> main() async {
 
   await windowManager.ensureInitialized();
   const windowOptions = WindowOptions(
-    size: Size(1280, 800),
-    minimumSize: Size(1024, 640),
+    size: AppLayout.defaultWindowSize,
+    minimumSize: AppLayout.minimumWindowSize,
     center: true,
     title: 'Gestion Externa',
   );

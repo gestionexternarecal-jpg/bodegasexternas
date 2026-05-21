@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/utils/ecuador_datetime.dart';
 
+import '../../../../core/constants/app_layout.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_semantic_colors.dart';
@@ -55,7 +56,7 @@ class _TransfersListScreenState extends ConsumerState<TransfersListScreen> {
         label: const Text('Nueva transferencia'),
       ),
       body: Padding(
-      padding: const EdgeInsets.all(20),
+      padding: AppLayout.pagePadding(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

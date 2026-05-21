@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../core/constants/app_layout.dart';
 import '../../../../core/theme/app_semantic_colors.dart';
 import '../../../../core/utils/result.dart';
 import '../../../../shared/widgets/company_badge.dart';
@@ -418,12 +419,14 @@ class ProductEntryGridState extends State<ProductEntryGrid> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 420),
+          constraints: BoxConstraints(
+            maxHeight: AppLayout.productGridMaxHeight(context),
+          ),
           child: SingleChildScrollView(
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: SizedBox(
-                width: 1020,
+                width: AppLayout.productGridTableWidth(context),
                 child: Table(
                   border: border,
                   defaultVerticalAlignment: TableCellVerticalAlignment.middle,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/constants/app_layout.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../../core/providers/app_providers.dart';
 import '../../../../shared/widgets/app_snackbar.dart';
@@ -135,7 +136,7 @@ class _CreateTransferScreenState extends ConsumerState<CreateTransferScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 20, 0),
+              padding: EdgeInsets.fromLTRB(8, 8, AppLayout.pagePadding(context).right, 0),
               child: Row(
                 children: [
                   IconButton(
@@ -161,7 +162,7 @@ class _CreateTransferScreenState extends ConsumerState<CreateTransferScreen> {
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+                padding: AppLayout.pagePadding(context),
                 child: _showProcessPanel && _processConfigs != null
                     ? CompanyProcessPanel(
                         configs: _processConfigs!,
@@ -209,107 +210,118 @@ class _CreateTransferScreenState extends ConsumerState<CreateTransferScreen> {
                                 ),
                               ),
                             ),
-                            data: (keys) => Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: Card(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(12),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: [
-                                          Text(
-                                            'BODEGA DE ORIGEN',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleSmall
-                                                ?.copyWith(
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                          ),
-                                          const SizedBox(height: 10),
-                                          Autocomplete<String>(
-                                            initialValue:
-                                                _primaryOriginKey == null
-                                                    ? null
-                                                    : TextEditingValue(
-                                                        text: _primaryOriginKey!,
-                                                      ),
-                                            optionsBuilder: (text) {
-                                              final q = text.text
-                                                  .trim()
-                                                  .toLowerCase();
-                                              if (q.isEmpty) return keys;
-                                              return keys.where(
-                                                (k) =>
-                                                    k.toLowerCase().contains(q),
-                                              );
-                                            },
-                                            onSelected: (v) {
-                                              setState(
-                                                () => _primaryOriginKey = v,
-                                              );
-                                            },
-                                            fieldViewBuilder: (
-                                              context,
-                                              controller,
-                                              focusNode,
-                                              onFieldSubmitted,
-                                            ) {
-                                              if (_primaryOriginKey != null &&
-                                                  controller.text.isEmpty) {
-                                                controller.text =
-                                                    _primaryOriginKey!;
-                                              }
-                                              return TextFormField(
-                                                controller: controller,
-                                                focusNode: focusNode,
-                                                decoration:
-                                                    const InputDecoration(
-                                                  hintText:
-                                                      'Ej. Casa de la moneda',
-                                                  prefixIcon: Icon(
-                                                    Icons.pin_drop_outlined,
-                                                  ),
-                                                  isDense: true,
-                                                ),
-                                                onChanged: (v) {
-                                                  final trimmed = v.trim();
-                                                  setState(() {
-                                                    _primaryOriginKey =
-                                                        trimmed.isEmpty
-                                                            ? null
-                                                            : trimmed;
-                                                  });
-                                                },
-                                              );
-                                            },
-                                          ),
-                                        ],
+                            data: (keys) {
+                              final stackOriginAndBulk =
+                                  AppLayout.isCompactWidth(context);
+                              final originCard = Card(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      Text(
+                                        'BODEGA DE ORIGEN',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleSmall
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                       ),
-                                    ),
+                                      const SizedBox(height: 10),
+                                      Autocomplete<String>(
+                                        initialValue: _primaryOriginKey == null
+                                            ? null
+                                            : TextEditingValue(
+                                                text: _primaryOriginKey!,
+                                              ),
+                                        optionsBuilder: (text) {
+                                          final q =
+                                              text.text.trim().toLowerCase();
+                                          if (q.isEmpty) return keys;
+                                          return keys.where(
+                                            (k) => k.toLowerCase().contains(q),
+                                          );
+                                        },
+                                        onSelected: (v) {
+                                          setState(
+                                            () => _primaryOriginKey = v,
+                                          );
+                                        },
+                                        fieldViewBuilder: (
+                                          context,
+                                          controller,
+                                          focusNode,
+                                          onFieldSubmitted,
+                                        ) {
+                                          if (_primaryOriginKey != null &&
+                                              controller.text.isEmpty) {
+                                            controller.text =
+                                                _primaryOriginKey!;
+                                          }
+                                          return TextFormField(
+                                            controller: controller,
+                                            focusNode: focusNode,
+                                            decoration: const InputDecoration(
+                                              hintText:
+                                                  'Ej. Casa de la moneda',
+                                              prefixIcon: Icon(
+                                                Icons.pin_drop_outlined,
+                                              ),
+                                              isDense: true,
+                                            ),
+                                            onChanged: (v) {
+                                              final trimmed = v.trim();
+                                              setState(() {
+                                                _primaryOriginKey =
+                                                    trimmed.isEmpty
+                                                        ? null
+                                                        : trimmed;
+                                              });
+                                            },
+                                          );
+                                        },
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: BulkUploadSection(
-                                    gridKey: _gridKey,
-                                    onImportFinished: () {
-                                      setState(() {
-                                        _lines = _gridKey
-                                                .currentState
-                                                ?.validatedLinesSnapshot ??
-                                            _lines;
-                                      });
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
+                              );
+                              final bulkCard = BulkUploadSection(
+                                gridKey: _gridKey,
+                                onImportFinished: () {
+                                  setState(() {
+                                    _lines = _gridKey
+                                            .currentState
+                                            ?.validatedLinesSnapshot ??
+                                        _lines;
+                                  });
+                                },
+                              );
+                              if (stackOriginAndBulk) {
+                                return Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    originCard,
+                                    const SizedBox(height: 12),
+                                    bulkCard,
+                                  ],
+                                );
+                              }
+                              return Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(child: originCard),
+                                  const SizedBox(width: 12),
+                                  Expanded(child: bulkCard),
+                                ],
+                              );
+                            },
                           ),
-                          const SizedBox(height: 16),
+                          SizedBox(
+                            height: AppLayout.isCompactHeight(context) ? 10 : 16,
+                          ),
                           Card(
                             clipBehavior: Clip.antiAlias,
                             child: ProductEntryGrid(
@@ -325,7 +337,9 @@ class _CreateTransferScreenState extends ConsumerState<CreateTransferScreen> {
                               },
                             ),
                           ),
-                          const SizedBox(height: 24),
+                          SizedBox(
+                            height: AppLayout.isCompactHeight(context) ? 12 : 20,
+                          ),
                           FilledButton.icon(
                             onPressed: _lines.isEmpty ||
                                     _primaryOriginKey == null ||

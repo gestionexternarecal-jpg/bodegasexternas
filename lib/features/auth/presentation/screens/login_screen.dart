@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/constants/app_layout.dart';
 import '../../../../core/providers/app_providers.dart';
 import '../../../../core/utils/result.dart';
 import '../../../../shared/widgets/app_logo.dart';
@@ -131,15 +132,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final canSubmit = !_loading && !_loadingConnection && _hasServerConfig;
+    final compact = AppLayout.isCompactHeight(context);
+    final logoSize = compact ? 120.0 : 160.0;
+    final cardPadding = compact ? 20.0 : 28.0;
 
     return Scaffold(
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
+          constraints: const BoxConstraints(maxWidth: 420),
           child: Card(
-            margin: const EdgeInsets.all(24),
+            margin: EdgeInsets.all(compact ? 16 : 20),
             child: Padding(
-              padding: const EdgeInsets.all(32),
+              padding: EdgeInsets.all(cardPadding),
               child: Form(
                 key: _formKey,
                 child: SingleChildScrollView(
@@ -147,8 +151,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Center(child: AppLogo(size: 200)),
-                      const SizedBox(height: 16),
+                      Center(child: AppLogo(size: logoSize)),
+                      SizedBox(height: compact ? 12 : 16),
                       Text(
                         'Transferencias internas · Odoo',
                         textAlign: TextAlign.center,

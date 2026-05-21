@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/constants/app_layout.dart';
 import '../../../../core/providers/app_providers.dart';
 import '../../../../core/utils/ecuador_datetime.dart';
 import '../../../../core/utils/result.dart';
@@ -107,7 +108,7 @@ class _TransferDetailScreenState extends ConsumerState<TransferDetailScreen> {
         ),
       ),
       data: (picking) => Padding(
-        padding: const EdgeInsets.all(20),
+        padding: AppLayout.pagePadding(context),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/constants/app_layout.dart';
+
 /// Titulo superior del shell segun modulo activo.
 class ShellHeader extends StatelessWidget {
   const ShellHeader({
@@ -18,7 +20,7 @@ class ShellHeader extends StatelessWidget {
       elevation: 0,
       color: scheme.primary,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        padding: AppLayout.headerPadding(context),
         child: Row(
           children: [
             Text(
