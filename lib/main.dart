@@ -4,11 +4,13 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app.dart';
+import 'core/firebase/firebase_bootstrap.dart';
 import 'core/utils/ecuador_datetime.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting(EcuadorDateTime.locale);
+  await FirebaseBootstrap.initialize();
 
   ErrorWidget.builder = (FlutterErrorDetails details) {
     return Material(

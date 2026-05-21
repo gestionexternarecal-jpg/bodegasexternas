@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/constants/app_constants.dart';
 import '../../../../core/providers/app_providers.dart';
 import '../../../../core/utils/result.dart';
+import '../../../../shared/widgets/app_logo.dart';
 import '../../../../shared/widgets/app_snackbar.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -16,26 +16,31 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _urlController = TextEditingController();
-  final _dbController = TextEditingController();
   final _userController = TextEditingController();
   final _passController = TextEditingController();
   bool _loading = false;
   bool _obscure = true;
+  bool _loadingConnection = true;
+  String? _baseUrl;
+  String? _database;
 
   @override
   void initState() {
     super.initState();
-    _loadPrefs();
+    _loadConnection();
     _tryRestoreSession();
   }
 
-  Future<void> _loadPrefs() async {
+  Future<void> _loadConnection() async {
     final repo = await ref.read(authRepositoryProvider.future);
-    final prefs = repo.savedPrefs;
-    if (prefs.url != null) _urlController.text = prefs.url!;
-    if (prefs.db != null) _dbController.text = prefs.db!;
-    if (prefs.login != null) _userController.text = prefs.login!;
+    final prefs = await repo.loadSavedPrefs();
+    if (!mounted) return;
+    setState(() {
+      _baseUrl = prefs.url;
+      _database = prefs.db;
+      if (prefs.login != null) _userController.text = prefs.login!;
+      _loadingConnection = false;
+    });
   }
 
   Future<void> _tryRestoreSession() async {
@@ -53,15 +58,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  bool get _hasServerConfig {
+    final url = _baseUrl?.trim();
+    final db = _database?.trim();
+    return url != null && url.isNotEmpty && db != null && db.isNotEmpty;
+  }
+
   Future<void> _submit({bool testOnly = false}) async {
     if (!_formKey.currentState!.validate()) return;
+    if (!_hasServerConfig) {
+      _showSnack(
+        'Servidor Odoo no configurado. Contacte al administrador.',
+        isError: true,
+      );
+      return;
+    }
+
     setState(() => _loading = true);
     final repo = await ref.read(authRepositoryProvider.future);
+    final baseUrl = _baseUrl!.trim();
+    final database = _database!.trim();
 
     if (testOnly) {
       final result = await repo.testConnection(
-        baseUrl: _urlController.text,
-        database: _dbController.text,
+        baseUrl: baseUrl,
+        database: database,
         username: _userController.text,
         password: _passController.text,
       );
@@ -77,8 +98,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
 
     final result = await repo.login(
-      baseUrl: _urlController.text,
-      database: _dbController.text,
+      baseUrl: baseUrl,
+      database: database,
       username: _userController.text,
       password: _passController.text,
     );
@@ -102,8 +123,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
-    _urlController.dispose();
-    _dbController.dispose();
     _userController.dispose();
     _passController.dispose();
     super.dispose();
@@ -111,6 +130,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final canSubmit = !_loading && !_loadingConnection && _hasServerConfig;
+
     return Scaffold(
       body: Center(
         child: ConstrainedBox(
@@ -123,95 +144,89 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 key: _formKey,
                 child: SingleChildScrollView(
                   child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Icon(
-                      Icons.inventory_2_outlined,
-                      size: 48,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      AppConstants.appName,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Transferencias internas · Odoo',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 28),
-                    TextFormField(
-                      controller: _urlController,
-                      decoration: const InputDecoration(
-                        labelText: 'URL del servidor',
-                        hintText: 'https://mi-empresa.odoo.com',
-                        prefixIcon: Icon(Icons.link),
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Center(child: AppLogo(size: 200)),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Transferencias internas · Odoo',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall,
                       ),
-                      validator: (v) =>
-                          v == null || v.trim().isEmpty ? 'Requerido' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _dbController,
-                      decoration: const InputDecoration(
-                        labelText: 'Base de datos',
-                        prefixIcon: Icon(Icons.storage_outlined),
-                      ),
-                      validator: (v) =>
-                          v == null || v.trim().isEmpty ? 'Requerido' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _userController,
-                      decoration: const InputDecoration(
-                        labelText: 'Usuario',
-                        prefixIcon: Icon(Icons.person_outline),
-                      ),
-                      validator: (v) =>
-                          v == null || v.trim().isEmpty ? 'Requerido' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _passController,
-                      obscureText: _obscure,
-                      decoration: InputDecoration(
-                        labelText: 'Contraseña',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscure
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
+                      if (_loadingConnection) ...[
+                        const SizedBox(height: 24),
+                        const Center(
+                          child: SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
                           ),
-                          onPressed: () =>
-                              setState(() => _obscure = !_obscure),
                         ),
+                      ] else if (!_hasServerConfig) ...[
+                        const SizedBox(height: 20),
+                        Text(
+                          'Servidor no configurado. Compile o ejecute la app con '
+                          '--dart-define=ODOO_BASE_URL y ODOO_DATABASE '
+                          '(ver README).',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 28),
+                      TextFormField(
+                        controller: _userController,
+                        decoration: const InputDecoration(
+                          labelText: 'Usuario',
+                          prefixIcon: Icon(Icons.person_outline),
+                        ),
+                        validator: (v) =>
+                            v == null || v.trim().isEmpty ? 'Requerido' : null,
                       ),
-                      validator: (v) =>
-                          v == null || v.isEmpty ? 'Requerido' : null,
-                    ),
-                    const SizedBox(height: 24),
-                    FilledButton(
-                      onPressed: _loading ? null : () => _submit(),
-                      child: _loading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Iniciar sesion'),
-                    ),
-                    const SizedBox(height: 8),
-                    OutlinedButton(
-                      onPressed: _loading ? null : () => _submit(testOnly: true),
-                      child: const Text('Probar conexion'),
-                    ),
-                  ],
-                ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _passController,
+                        obscureText: _obscure,
+                        decoration: InputDecoration(
+                          labelText: 'Contraseña',
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscure
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                            ),
+                            onPressed: () =>
+                                setState(() => _obscure = !_obscure),
+                          ),
+                        ),
+                        validator: (v) =>
+                            v == null || v.isEmpty ? 'Requerido' : null,
+                      ),
+                      const SizedBox(height: 24),
+                      FilledButton(
+                        onPressed: canSubmit ? () => _submit() : null,
+                        child: _loading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Text('Iniciar sesion'),
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton(
+                        onPressed: canSubmit
+                            ? () => _submit(testOnly: true)
+                            : null,
+                        child: const Text('Probar conexion'),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

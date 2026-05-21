@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:printing/printing.dart';
 
 import '../../../../core/errors/app_exception.dart';
+import '../../../../core/theme/app_semantic_colors.dart';
 import '../../../../core/providers/app_providers.dart';
 import '../../../../core/utils/result.dart';
 import '../../../../shared/widgets/app_snackbar.dart';
@@ -51,12 +52,15 @@ class CompanyProcessPanel extends ConsumerStatefulWidget {
     super.key,
     required this.configs,
     required this.primaryOriginKey,
+    this.documentOrigin,
     required this.onBack,
   });
 
   final List<CompanyProcessConfig> configs;
   /// Nombre de ubicacion primaria (ej. "Casa de la moneda").
   final String primaryOriginKey;
+  /// Referencia Odoo `stock.picking.origin` (Documento origen).
+  final String? documentOrigin;
   final VoidCallback onBack;
 
   @override
@@ -141,6 +145,7 @@ class _CompanyProcessPanelState extends ConsumerState<CompanyProcessPanel> {
       sourceLocationId: config.sourceLocationId!,
       destLocationId: config.destLocationId!,
       lines: config.lines,
+      origin: widget.documentOrigin,
       companyId: config.companyId,
       confirmAfterCreate: _mode == TransferProcessMode.confirmado,
     );
@@ -593,7 +598,10 @@ class _CompanyProcessCardState extends ConsumerState<_CompanyProcessCard> {
                       label: Text('${widget.config.lines.length} productos'),
                     ),
                     if (widget.config.isDone)
-                      const Icon(Icons.check_circle, color: Colors.green),
+                      Icon(
+                        Icons.check_circle,
+                        color: context.semantic.success,
+                      ),
                   ],
                 ),
                 if (originMissing) ...[

@@ -10,7 +10,7 @@ class AuthRepository {
   final OdooRpcClient _rpc;
   final SessionStorage _storage;
 
-  ({String? url, String? db, String? login}) get savedPrefs =>
+  Future<({String? url, String? db, String? login})> loadSavedPrefs() =>
       _storage.readConnectionPrefs();
 
   Future<Result<OdooSession>> login({

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../core/config/odoo_connection_config.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../domain/entities/odoo_session.dart';
 
@@ -17,17 +18,35 @@ class SessionStorage {
     required String database,
     required String login,
   }) async {
-    await _prefs.setString(AppConstants.keyServerUrl, baseUrl);
-    await _prefs.setString(AppConstants.keyDatabase, database);
+    await _secure.write(
+      key: AppConstants.secureServerUrl,
+      value: baseUrl,
+    );
+    await _secure.write(
+      key: AppConstants.secureDatabase,
+      value: database,
+    );
+    await _secure.write(
+      key: AppConstants.secureLogin,
+      value: login,
+    );
     await _prefs.setString(AppConstants.keyLogin, login);
+    await _clearLegacyConnectionPrefs();
   }
 
-  ({String? url, String? db, String? login}) readConnectionPrefs() {
-    return (
-      url: _prefs.getString(AppConstants.keyServerUrl),
-      db: _prefs.getString(AppConstants.keyDatabase),
-      login: _prefs.getString(AppConstants.keyLogin),
-    );
+  Future<({String? url, String? db, String? login})> readConnectionPrefs() async {
+    await _migrateConnectionPrefsFromPrefsIfNeeded();
+
+    var url = await _secure.read(key: AppConstants.secureServerUrl);
+    var db = await _secure.read(key: AppConstants.secureDatabase);
+    var login = await _secure.read(key: AppConstants.secureLogin);
+
+    login ??= _prefs.getString(AppConstants.keyLogin);
+
+    url = _firstNonEmpty(url, OdooConnectionConfig.defaultBaseUrl);
+    db = _firstNonEmpty(db, OdooConnectionConfig.defaultDatabase);
+
+    return (url: _nullableIfEmpty(url), db: _nullableIfEmpty(db), login: login);
   }
 
   Future<void> saveSession(OdooSession session, String password) async {
@@ -38,6 +57,11 @@ class SessionStorage {
     await _secure.write(
       key: AppConstants.securePassword,
       value: password,
+    );
+    await saveConnectionPrefs(
+      baseUrl: session.baseUrl,
+      database: session.database,
+      login: session.login,
     );
   }
 
@@ -52,5 +76,39 @@ class SessionStorage {
   Future<void> clearSession() async {
     await _secure.delete(key: AppConstants.secureSessionJson);
     await _secure.delete(key: AppConstants.securePassword);
+  }
+
+  Future<void> _migrateConnectionPrefsFromPrefsIfNeeded() async {
+    final legacyUrl = _prefs.getString(AppConstants.keyServerUrl);
+    final legacyDb = _prefs.getString(AppConstants.keyDatabase);
+    if (legacyUrl == null && legacyDb == null) return;
+
+    final existingUrl = await _secure.read(key: AppConstants.secureServerUrl);
+    if (existingUrl == null && legacyUrl != null && legacyUrl.isNotEmpty) {
+      await _secure.write(key: AppConstants.secureServerUrl, value: legacyUrl);
+    }
+
+    final existingDb = await _secure.read(key: AppConstants.secureDatabase);
+    if (existingDb == null && legacyDb != null && legacyDb.isNotEmpty) {
+      await _secure.write(key: AppConstants.secureDatabase, value: legacyDb);
+    }
+
+    await _clearLegacyConnectionPrefs();
+  }
+
+  Future<void> _clearLegacyConnectionPrefs() async {
+    await _prefs.remove(AppConstants.keyServerUrl);
+    await _prefs.remove(AppConstants.keyDatabase);
+  }
+
+  static String? _nullableIfEmpty(String? value) {
+    if (value == null || value.isEmpty) return null;
+    return value;
+  }
+
+  static String? _firstNonEmpty(String? a, String b) {
+    if (a != null && a.isNotEmpty) return a;
+    if (b.isNotEmpty) return b;
+    return null;
   }
 }

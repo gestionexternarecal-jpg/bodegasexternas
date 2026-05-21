@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../core/theme/app_semantic_colors.dart';
 import '../../../../core/utils/result.dart';
 import '../../../../shared/widgets/company_badge.dart';
 import '../../data/repositories/transfers_repository.dart';
@@ -15,6 +16,7 @@ class ProductEntryGrid extends StatefulWidget {
     required this.session,
     required this.fallbackCompanies,
     required this.primaryOriginKey,
+    required this.documentOriginController,
     required this.onLinesChanged,
   });
 
@@ -28,6 +30,8 @@ class ProductEntryGrid extends StatefulWidget {
   final List<ResCompany> fallbackCompanies;
   /// Nombre de ubicacion primaria para validar stock por empresa.
   final String? primaryOriginKey;
+  /// Referencia / documento origen (`stock.picking.origin` en Odoo).
+  final TextEditingController documentOriginController;
   final ValueChanged<List<TransferLineDraft>> onLinesChanged;
 
   @override
@@ -208,6 +212,8 @@ class ProductEntryGridState extends State<ProductEntryGrid> {
       row.clearProduct(keepCode: true);
       row.companyError = null;
       row.stockMessage = null;
+      row.availableStock = null;
+      row.stockLoading = false;
     });
 
     final result = await widget.repo.findProductsByCode(
@@ -292,17 +298,37 @@ class ProductEntryGridState extends State<ProductEntryGrid> {
     }
   }
 
+  static String _formatQty(double value) {
+    return value == value.roundToDouble()
+        ? value.toInt().toString()
+        : value.toStringAsFixed(2);
+  }
+
   Future<void> _validateStock(int index) async {
     final row = _rows[index];
     final key = widget.primaryOriginKey?.trim();
     if (key == null || key.isEmpty) {
-      if (mounted) setState(() => row.stockMessage = null);
+      if (mounted) {
+        setState(() {
+          row.stockMessage = null;
+          row.availableStock = null;
+          row.stockLoading = false;
+        });
+      }
       return;
     }
     if (row.productId == null || row.companyId == null) {
-      if (mounted) setState(() => row.stockMessage = null);
+      if (mounted) {
+        setState(() {
+          row.stockMessage = null;
+          row.availableStock = null;
+          row.stockLoading = false;
+        });
+      }
       return;
     }
+
+    if (mounted) setState(() => row.stockLoading = true);
 
     final result = await widget.repo.checkStockAtPrimaryOrigin(
       baseUrl: widget.session.baseUrl,
@@ -318,10 +344,13 @@ class ProductEntryGridState extends State<ProductEntryGrid> {
     if (!mounted || index >= _rows.length) return;
 
     setState(() {
+      row.stockLoading = false;
       switch (result) {
         case Success(:final value):
+          row.availableStock = value.availableQty;
           row.stockMessage = value.userMessage;
         case Failure(:final error):
+          row.availableStock = null;
           row.stockMessage = error.message;
       }
     });
@@ -388,35 +417,13 @@ class ProductEntryGridState extends State<ProductEntryGrid> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Enter en codigo busca el producto y valida stock en la '
-                  'ubicacion de origen primaria. Enter en cantidad avanza fila.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-              Text(
-                '${_rows.length} filas',
-                style: Theme.of(context).textTheme.labelMedium,
-              ),
-            ],
-          ),
-        ),
         ConstrainedBox(
           constraints: const BoxConstraints(maxHeight: 420),
           child: SingleChildScrollView(
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: SizedBox(
-                width: 920,
+                width: 1020,
                 child: Table(
                   border: border,
                   defaultVerticalAlignment: TableCellVerticalAlignment.middle,
@@ -425,8 +432,9 @@ class ProductEntryGridState extends State<ProductEntryGrid> {
                     1: FixedColumnWidth(180),
                     2: FlexColumnWidth(2),
                     3: FixedColumnWidth(90),
-                    4: FixedColumnWidth(200),
-                    5: FixedColumnWidth(44),
+                    4: FixedColumnWidth(100),
+                    5: FixedColumnWidth(200),
+                    6: FixedColumnWidth(44),
                   },
                   children: [
                     TableRow(
@@ -438,6 +446,7 @@ class ProductEntryGridState extends State<ProductEntryGrid> {
                         _headerCell('Codigo *', headerStyle),
                         _headerCell('Producto', headerStyle),
                         _headerCell('Cantidad *', headerStyle),
+                        _headerCell('Stock origen', headerStyle),
                         _headerCell('Empresa', headerStyle),
                         _headerCell('', headerStyle),
                       ],
@@ -450,6 +459,20 @@ class ProductEntryGridState extends State<ProductEntryGrid> {
             ),
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+          child: TextField(
+            controller: widget.documentOriginController,
+            decoration: const InputDecoration(
+              labelText: 'Documento origen',
+              hintText: 'Referencia del documento (ej. ABAST.MATRIZ.CCA#3)',
+              prefixIcon: Icon(Icons.description_outlined),
+              isDense: true,
+            ),
+            textCapitalization: TextCapitalization.characters,
+            maxLines: 1,
+          ),
+        ),
       ],
     );
   }
@@ -458,6 +481,87 @@ class ProductEntryGridState extends State<ProductEntryGrid> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       child: Text(text, style: style),
+    );
+  }
+
+  Widget _buildStockCell(BuildContext context, _GridRow row, bool isSearching) {
+    final scheme = Theme.of(context).colorScheme;
+    final semantic = context.semantic;
+
+    if (!row.isResolved || isSearching) {
+      return Text(
+        '-',
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodySmall,
+      );
+    }
+
+    if (row.stockLoading) {
+      return const Center(
+        child: SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    final originKey = widget.primaryOriginKey?.trim();
+    if (originKey == null || originKey.isEmpty) {
+      return Text(
+        '-',
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontStyle: FontStyle.italic,
+            ),
+      );
+    }
+
+    if (row.availableStock == null) {
+      return Text(
+        '-',
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodySmall,
+      );
+    }
+
+    final qty = row.availableStock!;
+    Color? color;
+    if (row.hasStockIssue) {
+      color = semantic.danger;
+    } else if (qty > 0) {
+      color = semantic.success;
+    } else {
+      color = scheme.onSurfaceVariant;
+    }
+
+    final uom = row.uomName?.trim();
+    final uomLabel = (uom != null && uom.isNotEmpty) ? uom : null;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          uomLabel != null ? '${_formatQty(qty)} $uomLabel' : _formatQty(qty),
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: color,
+                height: 1.2,
+              ),
+        ),
+        if (row.hasStockIssue && row.stockMessage != null)
+          Text(
+            'Insuf.',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: color,
+                  fontSize: 10,
+                ),
+          ),
+      ],
     );
   }
 
@@ -538,6 +642,10 @@ class ProductEntryGridState extends State<ProductEntryGrid> {
           ),
         ),
         Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          child: _buildStockCell(context, row, isSearching),
+        ),
+        Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
           child: row.companyName != null && row.companyName!.isNotEmpty
               ? CompanyBadge(companyName: row.companyName!, compact: true)
@@ -545,7 +653,7 @@ class ProductEntryGridState extends State<ProductEntryGrid> {
         ),
         IconButton(
           icon: const Icon(Icons.delete_outline, size: 20),
-          color: Colors.red.shade400,
+          color: Theme.of(context).colorScheme.error,
           onPressed: row.isEmpty ? null : () => _removeRow(index),
         ),
       ],
@@ -568,12 +676,15 @@ class _GridRow {
   String? productName;
   double quantity = 1;
   int? uomId;
+  String? uomName;
   String? barcode;
   String? defaultCode;
   int? companyId;
   String? companyName;
   String? companyError;
   String? stockMessage;
+  double? availableStock;
+  bool stockLoading = false;
 
   String? get displayError => companyError ?? stockMessage;
 
@@ -590,6 +701,7 @@ class _GridRow {
     productId = p.id;
     productName = p.name;
     uomId = p.uomId;
+    uomName = p.uomName;
     barcode = p.barcode;
     defaultCode = p.defaultCode;
     this.companyId = companyId;
@@ -600,18 +712,23 @@ class _GridRow {
         : quantity.toString();
     companyError = null;
     stockMessage = null;
+    availableStock = null;
+    stockLoading = false;
   }
 
   void clearProduct({bool keepCode = false}) {
     productId = null;
     productName = null;
     uomId = null;
+    uomName = null;
     barcode = null;
     defaultCode = null;
     companyId = null;
     companyName = null;
     companyError = null;
     stockMessage = null;
+    availableStock = null;
+    stockLoading = false;
     if (!keepCode) codeController.clear();
   }
 

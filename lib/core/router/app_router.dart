@@ -7,10 +7,18 @@ import '../../features/shell/presentation/screens/main_shell_screen.dart';
 import '../../features/transfers/presentation/screens/create_transfer_screen.dart';
 import '../../features/transfers/presentation/screens/transfer_detail_screen.dart';
 import '../../features/transfers/presentation/screens/transfers_list_screen.dart';
+import '../../features/warehouse/presentation/screens/warehouse_bins_screen.dart';
+import '../../features/warehouse/presentation/screens/warehouse_home_screen.dart';
+import '../../features/warehouse/presentation/screens/warehouse_stock_screen.dart';
 import '../providers/app_providers.dart';
 
 /// Ruta para crear transferencia (un solo segmento; compatible con ShellRoute).
 const String routeCreateTransfer = '/create-transfer';
+
+/// Modulo Gestion Almacen (Odoo + Firebase).
+const String routeWarehouse = '/warehouse';
+const String routeWarehouseStock = '/warehouse/stock';
+const String routeWarehouseBins = '/warehouse/bins';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final session = ref.watch(activeSessionProvider);
@@ -57,6 +65,20 @@ final routerProvider = Provider<GoRouter>((ref) {
               }
               return TransferDetailScreen(pickingId: id);
             },
+          ),
+          GoRoute(
+            path: routeWarehouse,
+            builder: (context, state) => const WarehouseHomeScreen(),
+            routes: [
+              GoRoute(
+                path: 'stock',
+                builder: (context, state) => const WarehouseStockScreen(),
+              ),
+              GoRoute(
+                path: 'bins',
+                builder: (context, state) => const WarehouseBinsScreen(),
+              ),
+            ],
           ),
         ],
       ),

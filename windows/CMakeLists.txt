@@ -2,6 +2,24 @@
 cmake_minimum_required(VERSION 3.14)
 project(gestion_externa LANGUAGES CXX)
 
+# Firebase C++ SDK declara cmake_minimum_required(3.1). CMake 4.x exige >= 3.10.
+# Ver flutterfire#12849 / firebase-cpp-sdk#1599.
+set(CMAKE_POLICY_VERSION_MINIMUM 3.10 CACHE STRING "" FORCE)
+
+# Si el SDK ya se extrajo en un build anterior, actualiza su CMakeLists (evita warning).
+set(_FIREBASE_SDK_CMAKE
+    "${CMAKE_BINARY_DIR}/extracted/firebase_cpp_sdk_windows/CMakeLists.txt")
+if(EXISTS "${_FIREBASE_SDK_CMAKE}")
+  file(READ "${_FIREBASE_SDK_CMAKE}" _firebase_cmake_raw)
+  if(_firebase_cmake_raw MATCHES "cmake_minimum_required\\(VERSION 3\\.1\\)")
+    string(REPLACE "cmake_minimum_required(VERSION 3.1)"
+           "cmake_minimum_required(VERSION 3.14)" _firebase_cmake_raw
+           "${_firebase_cmake_raw}")
+    file(WRITE "${_FIREBASE_SDK_CMAKE}" "${_firebase_cmake_raw}")
+    message(STATUS "Firebase SDK: CMakeLists actualizado (3.1 -> 3.14)")
+  endif()
+endif()
+
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
 set(BINARY_NAME "gestion_externa")

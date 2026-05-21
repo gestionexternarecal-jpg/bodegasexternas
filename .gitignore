@@ -1,3 +1,9 @@
+# Odoo (copiar desde dart_defines.example.json)
+dart_defines.json
+
+# Artefactos de release
+/dist/
+
 # Miscellaneous
 *.class
 *.log

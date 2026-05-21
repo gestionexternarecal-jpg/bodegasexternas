@@ -1,0 +1,12 @@
+{
+  "version": "0.2.2",
+  "configurations": [
+    {
+      "name": "Windows (dart_defines.json)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "windows",
+      "toolArgs": ["--dart-define-from-file=dart_defines.json"]
+    }
+  ]
+}

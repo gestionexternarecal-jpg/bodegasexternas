@@ -1,5 +1,10 @@
 abstract final class AppConstants {
   static const String appName = 'Gestion Externa';
+
+  /// Activar tras `flutterfire configure` (ver docs/gestion_almacen).
+  static const bool useFirebase = false;
+
+  static const String moduleWarehouseTitle = 'Gestion Almacen';
   static const int defaultPageSize = 50;
   static const Duration rpcTimeout = Duration(seconds: 45);
 
@@ -11,4 +16,7 @@ abstract final class AppConstants {
   static const String secureUid = 'odoo_uid';
   static const String securePassword = 'odoo_password';
   static const String secureSessionJson = 'odoo_session';
+  static const String secureServerUrl = 'odoo_server_url';
+  static const String secureDatabase = 'odoo_database';
+  static const String secureLogin = 'odoo_login';
 }

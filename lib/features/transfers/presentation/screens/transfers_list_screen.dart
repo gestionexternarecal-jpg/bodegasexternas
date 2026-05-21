@@ -6,6 +6,7 @@ import '../../../../core/utils/ecuador_datetime.dart';
 
 import '../../../../core/errors/app_exception.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/theme/app_semantic_colors.dart';
 import '../../../../shared/widgets/company_badge.dart';
 import '../../../../shared/widgets/error_banner.dart';
 import '../../../../shared/widgets/stat_card.dart';
@@ -43,6 +44,7 @@ class _TransfersListScreenState extends ConsumerState<TransfersListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final semantic = context.semantic;
     final statsAsync = ref.watch(transferStatsProvider);
     final listAsync = ref.watch(transfersListProvider);
     final companiesAsync = ref.watch(companiesProvider);
@@ -65,7 +67,7 @@ class _TransfersListScreenState extends ConsumerState<TransfersListScreen> {
                     title: 'Pendientes',
                     value: stats.pending,
                     icon: Icons.schedule,
-                    color: Colors.orange,
+                    color: semantic.pending,
                     onTap: () {
                       setState(() => _stateFilter = 'draft');
                       _applyFilters();
@@ -75,7 +77,7 @@ class _TransfersListScreenState extends ConsumerState<TransfersListScreen> {
                     title: 'En proceso',
                     value: stats.inProgress,
                     icon: Icons.local_shipping_outlined,
-                    color: Colors.blue,
+                    color: semantic.info,
                     onTap: () {
                       setState(() => _stateFilter = 'assigned');
                       _applyFilters();
@@ -85,7 +87,7 @@ class _TransfersListScreenState extends ConsumerState<TransfersListScreen> {
                     title: 'Completadas',
                     value: stats.done,
                     icon: Icons.check_circle_outline,
-                    color: Colors.green,
+                    color: semantic.success,
                     onTap: () {
                       setState(() => _stateFilter = 'done');
                       _applyFilters();
@@ -95,7 +97,7 @@ class _TransfersListScreenState extends ConsumerState<TransfersListScreen> {
                     title: 'Canceladas',
                     value: stats.cancelled,
                     icon: Icons.cancel_outlined,
-                    color: Colors.red,
+                    color: semantic.danger,
                     onTap: () {
                       setState(() => _stateFilter = 'cancel');
                       _applyFilters();

@@ -23,6 +23,7 @@ class CreateTransferScreen extends ConsumerStatefulWidget {
 
 class _CreateTransferScreenState extends ConsumerState<CreateTransferScreen> {
   final _gridKey = GlobalKey<ProductEntryGridState>();
+  final _documentOriginController = TextEditingController();
   List<TransferLineDraft> _lines = [];
   bool _showProcessPanel = false;
   List<CompanyProcessConfig>? _processConfigs;
@@ -31,6 +32,17 @@ class _CreateTransferScreenState extends ConsumerState<CreateTransferScreen> {
   TransfersRepository get _repo => ref.read(transfersRepositoryProvider);
 
   ActiveSession? get _active => ref.read(activeSessionProvider);
+
+  @override
+  void dispose() {
+    _documentOriginController.dispose();
+    super.dispose();
+  }
+
+  String? get _documentOrigin {
+    final t = _documentOriginController.text.trim();
+    return t.isEmpty ? null : t;
+  }
 
   Map<int, List<TransferLineDraft>> _groupByCompany(List<TransferLineDraft> lines) {
     final map = <int, List<TransferLineDraft>>{};
@@ -154,6 +166,7 @@ class _CreateTransferScreenState extends ConsumerState<CreateTransferScreen> {
                     ? CompanyProcessPanel(
                         configs: _processConfigs!,
                         primaryOriginKey: _primaryOriginKey!,
+                        documentOrigin: _documentOrigin,
                         onBack: () => setState(() => _showProcessPanel = false),
                       )
                     : Column(
@@ -305,6 +318,8 @@ class _CreateTransferScreenState extends ConsumerState<CreateTransferScreen> {
                               session: session,
                               fallbackCompanies: companies,
                               primaryOriginKey: _primaryOriginKey,
+                              documentOriginController:
+                                  _documentOriginController,
                               onLinesChanged: (lines) {
                                 setState(() => _lines = lines);
                               },

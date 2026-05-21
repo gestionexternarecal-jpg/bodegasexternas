@@ -3,62 +3,95 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/providers/update_providers.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/providers/app_providers.dart';
+import '../../../../shared/widgets/app_logo.dart';
+import '../widgets/app_about_dialog.dart';
+import '../widgets/app_update_dialog.dart';
+import '../widgets/shell_header.dart';
+import '../widgets/shell_rail.dart';
 
-int _railIndex(String path) {
-  if (path == routeCreateTransfer ||
-      path == '/transfer/new' ||
-      path == '/transfers/create') {
-    return 1;
-  }
-  return 0;
-}
-
-class MainShellScreen extends ConsumerWidget {
+class MainShellScreen extends ConsumerStatefulWidget {
   const MainShellScreen({super.key, required this.child});
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MainShellScreen> createState() => _MainShellScreenState();
+}
+
+class _MainShellScreenState extends ConsumerState<MainShellScreen> {
+  bool _updateCheckStarted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkForUpdatesOnce());
+  }
+
+  Future<void> _checkForUpdatesOnce() async {
+    if (_updateCheckStarted || !mounted) return;
+    _updateCheckStarted = true;
+
+    final manifest =
+        await ref.read(updateCheckServiceProvider).checkForUpdate();
+    if (!mounted || manifest == null) return;
+    await showAppUpdateDialog(context, manifest);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final session = ref.watch(activeSessionProvider);
     final themeMode = ref.watch(appThemeModeProvider);
+    final versionAsync = ref.watch(appVersionLabelProvider);
     final isWide = MediaQuery.sizeOf(context).width > 1100;
+    final path = GoRouterState.of(context).uri.path;
+    final sessionLine = session != null
+        ? '${session.session.login} · ${session.session.database}'
+        : null;
+
+    final versionLabel = versionAsync.when(
+      data: (v) => v,
+      loading: () => '...',
+      error: (_, _) => '',
+    );
 
     return Scaffold(
       body: Row(
         children: [
           NavigationRail(
             extended: isWide,
-            // Con extended=true, Flutter exige labelType none o null.
             labelType: isWide
                 ? NavigationRailLabelType.none
                 : NavigationRailLabelType.all,
-            selectedIndex: _railIndex(GoRouterState.of(context).uri.path),
+            selectedIndex: shellRailIndexForPath(path),
             onDestinationSelected: (index) {
               switch (index) {
                 case 0:
                   context.go('/');
                 case 1:
                   context.go(routeCreateTransfer);
+                case 2:
+                  context.go(routeWarehouse);
               }
             },
             leading: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: 12),
               child: Column(
                 children: [
-                  Icon(
-                    Icons.inventory_2,
-                    size: 24,
-                    color: Theme.of(context).colorScheme.primary,
+                  AppLogo(
+                    size: isWide ? 56 : 40,
+                    borderRadius: 8,
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    AppConstants.appName,
-                    style: Theme.of(context).textTheme.labelSmall,
-                    textAlign: TextAlign.center,
-                  ),
+                  if (isWide) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      AppConstants.appName,
+                      style: Theme.of(context).textTheme.labelSmall,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -73,6 +106,11 @@ class MainShellScreen extends ConsumerWidget {
                 selectedIcon: Icon(Icons.add_box),
                 label: Text('Nueva'),
               ),
+              NavigationRailDestination(
+                icon: Icon(Icons.warehouse_outlined),
+                selectedIcon: Icon(Icons.warehouse),
+                label: Text('Almacen'),
+              ),
             ],
             trailing: Expanded(
               child: Align(
@@ -82,6 +120,20 @@ class MainShellScreen extends ConsumerWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      if (isWide && versionLabel.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Text(
+                            versionLabel,
+                            style: Theme.of(context).textTheme.labelSmall,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      IconButton(
+                        tooltip: 'Acerca de',
+                        onPressed: () => showAppAboutDialog(context, ref),
+                        icon: const Icon(Icons.info_outline),
+                      ),
                       IconButton(
                         tooltip: 'Tema',
                         onPressed: () {
@@ -117,31 +169,11 @@ class MainShellScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Material(
-                  elevation: 0,
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                    child: Row(
-                      children: [
-                        Text(
-                          'Transferencias internas',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const Spacer(),
-                        if (session != null)
-                          Text(
-                            '${session.session.login} · ${session.session.database}',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                      ],
-                    ),
-                  ),
+                ShellHeader(
+                  title: shellTitleForPath(path),
+                  sessionLine: sessionLine,
                 ),
-                Expanded(child: child),
+                Expanded(child: widget.child),
               ],
             ),
           ),
