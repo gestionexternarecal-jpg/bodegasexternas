@@ -68,6 +68,41 @@ Revisa `dist\`:
 
 ## Paso 4 — Publicar Release en GitHub
 
+### Opcion A — PowerShell con GitHub CLI (recomendado)
+
+Instalar `gh` (una vez):
+
+```powershell
+winget install --id GitHub.cli -e
+```
+
+Iniciar sesion (una vez; abre el navegador):
+
+```powershell
+gh auth login
+```
+
+Publicar (compila + sube a Releases):
+
+```powershell
+cd "d:\Desarollo de software\PC\Bodegas XT"
+.\tool\publish_github_release.ps1
+```
+
+Si ya compilaste y solo quieres subir `dist\`:
+
+```powershell
+.\tool\publish_github_release.ps1 -SkipBuild
+```
+
+Si el tag `v1.0.0` ya existe y quieres reemplazar el `.exe` y `version.json`:
+
+```powershell
+.\tool\publish_github_release.ps1 -SkipBuild -Replace
+```
+
+### Opcion B — Navegador (manual)
+
 1. Abre: https://github.com/gestionexternarecal-jpg/bodegasexternas/releases
 2. **Create a new release**
 3. **Choose a tag:** escribe `v1.0.0` → **Create new tag**
