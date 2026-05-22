@@ -1,0 +1,6 @@
+{
+  "ODOO_BASE_URL": "https://tu-servidor.odoo.com",
+  "ODOO_DATABASE": "nombre_base_datos",
+  "UPDATE_MANIFEST_URL": "",
+  "UPDATE_DOWNLOAD_BASE_URL": "https://github.com/gestionexternarecal-jpg/bodegasexternas/releases/latest/download/"
+}
