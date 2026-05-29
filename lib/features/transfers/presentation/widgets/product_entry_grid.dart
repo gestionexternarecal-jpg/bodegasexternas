@@ -98,9 +98,19 @@ class ProductEntryGridState extends State<ProductEntryGrid> {
     widget.onLinesChanged(_validatedLines());
   }
 
-  /// Lineas resueltas con problema de stock en origen primario.
-  bool get hasBlockingStockIssues =>
+  /// Lineas con aviso de stock (cero o insuficiente) en origen primario.
+  bool get hasStockWarnings =>
       _rows.any((r) => r.isResolved && r.hasStockIssue);
+
+  /// Mensajes de stock por producto (para confirmacion antes de procesar).
+  List<String> get stockWarningMessages => _rows
+      .where((r) => r.isResolved && r.hasStockIssue && r.stockMessage != null)
+      .map((r) {
+        final code = r.defaultCode?.trim();
+        final label = (code != null && code.isNotEmpty) ? code : r.productName;
+        return '$label: ${r.stockMessage}';
+      })
+      .toList();
 
   /// Producto encontrado pero cantidad en 0 (o vacia).
   bool get hasZeroQuantityResolvedLines =>
@@ -215,8 +225,7 @@ class ProductEntryGridState extends State<ProductEntryGrid> {
 
       final row = _rows[i];
       final ok = row.isResolved &&
-          (row.companyError == null || row.companyError!.isEmpty) &&
-          !row.hasStockIssue;
+          (row.companyError == null || row.companyError!.isEmpty);
       if (ok) {
         loaded++;
       } else {

@@ -9,6 +9,7 @@ import '../../../../core/utils/result.dart';
 import '../../domain/entities/stock_picking.dart';
 import '../../domain/entities/transfer_catalog.dart';
 import '../../domain/primary_origin_resolver.dart';
+import '../../domain/transfer_company_validator.dart';
 
 class TransfersRepository {
   TransfersRepository(this._rpc, {OdooReportDownloader? reportDownloader})
@@ -643,11 +644,22 @@ class TransfersRepository {
         password: password,
         model: 'stock.location',
         domain: domain,
-        fields: ['id', 'name', 'complete_name'],
+        fields: ['id', 'name', 'complete_name', 'company_id'],
         limit: 500,
         order: 'complete_name, name',
       );
-      return Success(rows.map(StockLocation.fromOdoo).toList());
+      final locations = rows.map(StockLocation.fromOdoo).toList();
+      if (companyId != null) {
+        return Success(
+          locations
+              .where(
+                (l) =>
+                    l.companyId == null || l.companyId == companyId,
+              )
+              .toList(),
+        );
+      }
+      return Success(locations);
     } on AppException catch (e) {
       return Failure(e);
     } catch (e) {
@@ -897,7 +909,18 @@ class TransfersRepository {
           );
         }
 
-        final type = types.first;
+        final matchingTypes = types
+            .where((t) => t.companyId == null || t.companyId == companyId)
+            .toList();
+        if (matchingTypes.isEmpty) {
+          return Failure(
+            OdooRpcException(
+              'Sin tipo de operacion interna para la empresa '
+              '${lines.first.companyName ?? companyId}',
+            ),
+          );
+        }
+        final type = matchingTypes.first;
         final sourceId = type.defaultSourceId;
         final destId = type.defaultDestId;
         if (sourceId == null || destId == null) {
@@ -939,6 +962,131 @@ class TransfersRepository {
     }
   }
 
+  /// Valida en Odoo que productos, ubicaciones y tipo de operacion coincidan con la empresa.
+  Future<Result<void>> verifyTransferCompanyConsistency({
+    required String baseUrl,
+    required String database,
+    required int uid,
+    required String password,
+    required int companyId,
+    required String companyName,
+    required List<TransferLineDraft> lines,
+    required int pickingTypeId,
+    required int sourceLocationId,
+    required int destLocationId,
+  }) async {
+    try {
+      if (lines.isEmpty) {
+        return Failure(
+          OdooRpcException('No hay productos para validar'),
+        );
+      }
+
+      final productIds = lines.map((l) => l.productId).toSet().toList();
+      final productRows = await _rpc.searchRead(
+        baseUrl: baseUrl,
+        database: database,
+        uid: uid,
+        password: password,
+        model: 'product.product',
+        domain: [
+          ['id', 'in', productIds],
+        ],
+        fields: ['id', 'name', 'default_code', 'company_id'],
+        limit: productIds.length,
+      );
+
+      final productsById = <int, OdooCompanyRecord>{
+        for (final row in productRows)
+          row['id'] as int: OdooCompanyRecord(
+            id: row['id'] as int,
+            label: OdooValue.string(row['default_code']) ??
+                OdooValue.stringOrEmpty(row['name']),
+            companyId: OdooValue.many2oneId(row['company_id']),
+            companyName: OdooValue.many2oneName(row['company_id']),
+          ),
+      };
+
+      final locationRows = await _rpc.searchRead(
+        baseUrl: baseUrl,
+        database: database,
+        uid: uid,
+        password: password,
+        model: 'stock.location',
+        domain: [
+          ['id', 'in', [sourceLocationId, destLocationId]],
+        ],
+        fields: ['id', 'name', 'complete_name', 'company_id'],
+        limit: 2,
+      );
+
+      final locationsById = <int, OdooCompanyRecord>{
+        for (final row in locationRows)
+          row['id'] as int: OdooCompanyRecord(
+            id: row['id'] as int,
+            label: OdooValue.string(row['complete_name']) ??
+                OdooValue.stringOrEmpty(row['name']),
+            companyId: OdooValue.many2oneId(row['company_id']),
+            companyName: OdooValue.many2oneName(row['company_id']),
+          ),
+      };
+
+      final typeRows = await _rpc.searchRead(
+        baseUrl: baseUrl,
+        database: database,
+        uid: uid,
+        password: password,
+        model: 'stock.picking.type',
+        domain: [
+          ['id', '=', pickingTypeId],
+        ],
+        fields: ['id', 'name', 'company_id'],
+        limit: 1,
+      );
+
+      final typeRow = typeRows.isEmpty ? null : typeRows.first;
+      final pickingTypeCompanyId =
+          typeRow == null ? null : OdooValue.many2oneId(typeRow['company_id']);
+      final pickingTypeCompanyName = typeRow == null
+          ? null
+          : OdooValue.many2oneName(typeRow['company_id']);
+      final pickingTypeLabel = typeRow == null
+          ? null
+          : OdooValue.stringOrEmpty(typeRow['name']);
+
+      final issues = TransferCompanyValidator.collectIssues(
+        expectedCompanyId: companyId,
+        lines: lines,
+        productsById: productsById,
+        locationsById: locationsById,
+        sourceLocationId: sourceLocationId,
+        destLocationId: destLocationId,
+        pickingTypeCompanyId: pickingTypeCompanyId,
+        pickingTypeCompanyName: pickingTypeCompanyName,
+        pickingTypeLabel: pickingTypeLabel,
+      );
+
+      if (issues.isNotEmpty) {
+        return Failure(
+          OdooRpcException(
+            TransferCompanyValidator.formatBlockingMessage(
+              expectedCompanyName: companyName,
+              issues: issues,
+            ),
+          ),
+        );
+      }
+
+      return const Success(null);
+    } on AppException catch (e) {
+      return Failure(e);
+    } catch (e) {
+      return Failure(
+        OdooRpcException('Error al validar empresa de la transferencia: $e'),
+      );
+    }
+  }
+
   Future<Result<int>> createInternalTransfer({
     required String baseUrl,
     required String database,
@@ -958,12 +1106,42 @@ class TransfersRepository {
           OdooRpcException('Agregue al menos un producto a la transferencia'),
         );
       }
+      if (companyId == null) {
+        return Failure(
+          OdooRpcException(
+            'Falta la empresa del borrador; revise la grilla de productos',
+          ),
+        );
+      }
       if (sourceLocationId == destLocationId) {
         return Failure(
           OdooRpcException(
             'La ubicacion de origen y destino deben ser diferentes',
           ),
         );
+      }
+
+      final companyLabel = lines
+              .map((l) => l.companyName)
+              .whereType<String>()
+              .where((n) => n.isNotEmpty)
+              .firstOrNull ??
+          'Empresa $companyId';
+
+      final consistency = await verifyTransferCompanyConsistency(
+        baseUrl: baseUrl,
+        database: database,
+        uid: uid,
+        password: password,
+        companyId: companyId,
+        companyName: companyLabel,
+        lines: lines,
+        pickingTypeId: pickingTypeId,
+        sourceLocationId: sourceLocationId,
+        destLocationId: destLocationId,
+      );
+      if (consistency case Failure(:final error)) {
+        return Failure(error);
       }
 
       final moves = <List<dynamic>>[];
@@ -985,7 +1163,7 @@ class TransfersRepository {
         'location_dest_id': destLocationId,
         'move_ids': moves,
       };
-      if (companyId != null) values['company_id'] = companyId;
+      values['company_id'] = companyId;
       final originText = origin?.trim();
       if (originText != null && originText.isNotEmpty) {
         values['origin'] = originText;

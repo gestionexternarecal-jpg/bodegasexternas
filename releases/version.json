@@ -1,6 +1,6 @@
 {
-  "version": "1.0.0",
-  "build": 1,
-  "download_url": "https://github.com/gestionexternarecal-jpg/bodegasexternas/releases/download/v1.0.0/GestionExterna_1.0.0_setup.exe",
-  "release_notes": "Primera version publica de Gestion Externa (Bodegas XT)."
+  "version": "1.0.1",
+  "build": 2,
+  "download_url": "https://github.com/gestionexternarecal-jpg/bodegasexternas/releases/download/v1.0.1/GestionExterna_1.0.1_setup.exe",
+  "release_notes": "Validacion de empresa en borradores, aviso de stock sin bloqueo, mejoras en ingreso manual y bodega de origen."
 }

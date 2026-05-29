@@ -16,11 +16,19 @@ class ResCompany {
 }
 
 class StockLocation {
-  const StockLocation({required this.id, required this.name, this.completeName});
+  const StockLocation({
+    required this.id,
+    required this.name,
+    this.completeName,
+    this.companyId,
+    this.companyName,
+  });
 
   final int id;
   final String name;
   final String? completeName;
+  final int? companyId;
+  final String? companyName;
 
   String get displayLabel => completeName ?? name;
 
@@ -29,6 +37,8 @@ class StockLocation {
       id: json['id'] as int,
       name: OdooValue.stringOrEmpty(json['name']),
       completeName: OdooValue.string(json['complete_name']),
+      companyId: OdooValue.many2oneId(json['company_id']),
+      companyName: OdooValue.many2oneName(json['company_id']),
     );
   }
 }

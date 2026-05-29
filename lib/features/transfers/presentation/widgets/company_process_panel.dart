@@ -136,12 +136,29 @@ class _CompanyProcessPanelState extends ConsumerState<CompanyProcessPanel> {
       return;
     }
 
+    final matchingTypes = types
+        .where(
+          (t) => t.companyId == null || t.companyId == config.companyId,
+        )
+        .toList();
+    if (matchingTypes.isEmpty) {
+      if (!mounted) return;
+      setState(() => config.isProcessing = false);
+      AppSnackbar.show(
+        context,
+        message:
+            'Ningun tipo de operacion interna corresponde a ${config.companyName}',
+        isError: true,
+      );
+      return;
+    }
+
     final result = await _repo.createInternalTransfer(
       baseUrl: active.session.baseUrl,
       database: active.session.database,
       uid: active.session.uid,
       password: active.password,
-      pickingTypeId: types.first.id,
+      pickingTypeId: matchingTypes.first.id,
       sourceLocationId: config.sourceLocationId!,
       destLocationId: config.destLocationId!,
       lines: config.lines,

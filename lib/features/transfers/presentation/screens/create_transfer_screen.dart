@@ -80,7 +80,7 @@ class _CreateTransferScreenState extends ConsumerState<CreateTransferScreen> {
     return map;
   }
 
-  void _openProcessPanel() {
+  Future<void> _openProcessPanel() async {
     if (_primaryOriginKey == null || _primaryOriginKey!.isEmpty) {
       AppSnackbar.show(
         context,
@@ -90,14 +90,49 @@ class _CreateTransferScreenState extends ConsumerState<CreateTransferScreen> {
       return;
     }
 
-    if (_gridKey.currentState?.hasBlockingStockIssues == true) {
-      AppSnackbar.show(
-        context,
-        message:
-            'Hay productos sin stock suficiente en la ubicacion de origen',
-        isError: true,
+    final stockWarnings =
+        _gridKey.currentState?.stockWarningMessages ?? const [];
+    if (stockWarnings.isNotEmpty) {
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Sin stock en origen'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Los siguientes productos no tienen stock suficiente en la '
+                  'bodega de origen seleccionada:',
+                ),
+                const SizedBox(height: 12),
+                for (final msg in stockWarnings)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text('• $msg'),
+                  ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Puede continuar y crear el borrador en Odoo de todas formas.',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Crear borrador igualmente'),
+            ),
+          ],
+        ),
       );
-      return;
+      if (proceed != true || !mounted) return;
     }
 
     if (_gridKey.currentState?.hasZeroQuantityResolvedLines == true) {

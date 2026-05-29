@@ -3,6 +3,20 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 Versionado segun [Semantic Versioning](https://semver.org/lang/es/) y el numero de build en `pubspec.yaml` (`version: X.Y.Z+N`).
 
+## [1.0.1] - 2026-05-22
+
+### Anadido
+
+- Validacion de empresa antes de crear borradores (productos, ubicaciones y tipo de operacion deben coincidir con Odoo).
+- Confirmacion al procesar si hay productos sin stock en origen; permite crear el borrador igualmente.
+
+### Mejorado
+
+- Ingreso manual: cantidad por defecto 0, foco codigo → cantidad, aviso si cantidad queda en 0.
+- Bodega de origen: oculta *Bodega en Revision* y *Productos con Falla*; seleccion estable.
+- Ubicaciones en panel de proceso filtradas por empresa.
+- Importacion Excel no falla solo por aviso de stock.
+
 ## [1.0.0] - 2026-05-22
 
 Primera version publica de **Gestion Externa** (Bodegas XT).
