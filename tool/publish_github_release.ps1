@@ -65,8 +65,11 @@ if (Test-Path $changelogPath) {
 }
 
 $releaseExists = $false
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = 'SilentlyContinue'
 gh release view $tag --repo $Repo 2>$null | Out-Null
 if ($LASTEXITCODE -eq 0) { $releaseExists = $true }
+$ErrorActionPreference = $prevEap
 
 if ($releaseExists -and -not $Replace) {
     Write-Host "El release $tag ya existe. Usa -Replace para subir de nuevo los archivos." -ForegroundColor Yellow
